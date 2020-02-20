@@ -1,6 +1,5 @@
 name: import_path
 version: 1.0.0
-author: Jacob MacDonald <jakemac53@gmail.com>
 description: A tool to find the shortest import path from one dart file to another.
 homepage: https://github.com/jakemac53/import_path
 
