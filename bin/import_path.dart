@@ -4,10 +4,13 @@
 
 import 'dart:collection';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:package_config/package_config.dart';
+
+// Assigned early on in `main`.
+PackageConfig packageConfig;
 
 main(List<String> args) async {
   if (args.length != 2) {
@@ -20,15 +23,16 @@ searching from and an import to search for.
 
   var from = Uri.base.resolve(args[0]);
   var importToFind = Uri.base.resolve(args[1]);
-  var root =
-      from.scheme == 'package' ? await Isolate.resolvePackageUri(from) : from;
+  packageConfig = await findPackageConfig(Directory.current);
+
+  var root = from.scheme == 'package' ? packageConfig.resolve(from) : from;
   var queue = Queue<Uri>()..add(root);
 
   // Contains the closest parent to the root of the app for a given  uri.
   var parents = <String, String>{root.toString(): null};
   while (queue.isNotEmpty) {
     var parent = queue.removeFirst();
-    var newImports = (await _importsFor(parent))
+    var newImports = _importsFor(parent)
         .where((uri) => !parents.containsKey(uri.toString()));
     queue.addAll(newImports);
     for (var import in newImports) {
@@ -42,12 +46,11 @@ searching from and an import to search for.
   print('Unable to find an import path from $from to $importToFind');
 }
 
-Future<List<Uri>> _importsFor(Uri uri) async {
+List<Uri> _importsFor(Uri uri) {
   if (uri.scheme == 'dart') return [];
 
   var filePath =
-      (uri.scheme == 'package' ? await Isolate.resolvePackageUri(uri) : uri)
-          .toFilePath();
+      (uri.scheme == 'package' ? packageConfig.resolve(uri) : uri).toFilePath();
 
   var contents = File(filePath).readAsStringSync();
 
