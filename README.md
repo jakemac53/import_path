@@ -4,7 +4,7 @@ A tool to find the shortest import path from one dart file to another.
 
 First, globally activate the package:
 
-`pub global activate import_path`
+`dart pub global activate import_path`
 
 Then run it, the first argument is the library or application that you want to
 start searching from, and the second argument is the import you want to search
