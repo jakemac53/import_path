@@ -1,4 +1,4 @@
-# 1.0.3
+# 1.1.0
 
 - Support reading generated to cache files from build_runner.
 - Update analyzer dependency.
