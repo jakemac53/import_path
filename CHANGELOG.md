@@ -1,3 +1,9 @@
+# 1.0.3
+
+- Support reading generated to cache files from build_runner.
+- Update analyzer dependency.
+- Migrate to null safety.
+
 # 1.0.2
 
 Update analyzer and package_config dependencies.

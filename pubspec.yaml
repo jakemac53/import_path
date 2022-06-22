@@ -1,11 +1,11 @@
 name: import_path
-version: 1.0.2
+version: 1.1.0
 description: A tool to find the shortest import path from one dart file to another.
 homepage: https://github.com/jakemac53/import_path
 
 environment:
-  sdk: '>=2.7.0 <3.0.0'
+  sdk: '>=2.12.0 <3.0.0'
 
 dependencies:
-  analyzer: ^3.0.0
+  analyzer: '>=3.0.0 <5.0.0'
   package_config: ^2.0.0
