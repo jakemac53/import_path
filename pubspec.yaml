@@ -9,3 +9,4 @@ environment:
 dependencies:
   analyzer: '>=3.0.0 <5.0.0'
   package_config: ^2.0.0
+  path: ^1.8.0
