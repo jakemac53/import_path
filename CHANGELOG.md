@@ -1,3 +1,7 @@
+# 1.1.1
+
+- Add explicit executables config to the pubspec.yaml.
+
 # 1.1.0
 
 - Support reading generated to cache files from build_runner.
