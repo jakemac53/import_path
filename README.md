@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/import_path.svg?logo=dart&logoColor=00b9fc)](https://pub.dartlang.org/packages/import_path)
 [![Null Safety](https://img.shields.io/badge/null-safety-brightgreen)](https://dart.dev/null-safety)
 [![Dart CI](https://github.com/jakemac53/import_path/actions/workflows/dart.yml/badge.svg?branch=master)](https://github.com/jakemac53/import_path/actions/workflows/dart.yml)
-[![New Commits](https://img.shields.io/github/commits-since/jakemac53/import_path/latest?logo=git&logoColor=white)](https://github.com/jakemac53/import_path/network)
+[![GitHub Tag](https://img.shields.io/github/v/tag/jakemac53/import_path?logo=git&logoColor=white)](https://github.com/jakemac53/import_path/releases)
 [![Last Commits](https://img.shields.io/github/last-commit/jakemac53/import_path?logo=git&logoColor=white)](https://github.com/jakemac53/import_path/commits/master)
 [![Pull Requests](https://img.shields.io/github/issues-pr/jakemac53/import_path?logo=github&logoColor=white)](https://github.com/jakemac53/import_path/pulls)
 [![Code size](https://img.shields.io/github/languages/code-size/jakemac53/import_path?logo=github&logoColor=white)](https://github.com/jakemac53/import_path)
