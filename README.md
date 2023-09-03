@@ -9,7 +9,9 @@
 [![Code size](https://img.shields.io/github/languages/code-size/jakemac53/import_path?logo=github&logoColor=white)](https://github.com/jakemac53/import_path)
 [![License](https://img.shields.io/github/license/jakemac53/import_path?logo=open-source-initiative&logoColor=green)](https://github.com/jakemac53/import_path/blob/master/LICENSE)
 
-A tool to find the shortest import path from one dart file to another.
+A tool to find the shortest import path or listing
+all import paths between two Dart files.
+It also supports the use of `RegExp` to match imports.
 
 ## CLI Usage
 
