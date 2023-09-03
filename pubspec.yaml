@@ -1,15 +1,18 @@
 name: import_path
-version: 1.1.1
-description: A tool to find the shortest import path from one dart file to another.
+version: 1.2.0
+description: A tool to find the shortest import path or listing all import paths between two Dart files. It also supports the use of `RegExp` to match imports.
 homepage: https://github.com/jakemac53/import_path
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: '>=2.14.0 <4.0.0'
 
 dependencies:
   analyzer: '>=3.0.0 <5.0.0'
-  package_config: ^2.0.0
-  path: ^1.8.0
+  package_config: ^2.1.0
+  path: ^1.8.3
+  ascii_art_tree: ^1.0.2
+  test: ^1.24.3
+
 
 executables:
   import_path: import_path

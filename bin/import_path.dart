@@ -2,105 +2,69 @@
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-import 'dart:collection';
-import 'dart:io';
+import 'package:import_path/import_path.dart';
 
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:package_config/package_config.dart';
-import 'package:path/path.dart' as p;
+void _showHelp() {
+  print('''
+╔═════════════════════╗
+║  import_path - CLI  ║
+╚═════════════════════╝
 
-// Assigned early on in `main`.
-late PackageConfig packageConfig;
+USAGE:
 
-main(List<String> args) async {
-  if (args.length != 2) {
-    print('''
-Expected exactly two Dart files as arguments, a file to start
-searching from and an import to search for.
+  import_path %startSearchFile %targetImport -s -q --all
+
+OPTIONS:
+
+  --regexp   # Parses `%targetImport` as a `RegExp`.
+  --all      # Searches for all the import paths.
+  -s         # Strips the search root directory from displayed import paths.
+  -q         # Quiet output (only displays found paths).
+  --elegant  # Use `elegant` style for the output tree (default).
+  --dots     # Use `dots` style for the output tree.
+
+EXAMPLES:
+
+  # Search for the shortest import path of `dart:io` in a `web` directory:
+  import_path web/main.dart dart:io
+
+  # Search all the import paths of a deferred library,
+  # stripping the search root directory from the output:
+  import_path web/main.dart web/lib/deferred_lib.dart --all -s
+
+  # For a quiet output (no headers or warnings, only displays found paths):
+  import_path web/main.dart dart:io -q
+
+  # Search for all the imports for "dart:io" and "dart:html" using `RegExp`:
+  import_path web/main.dart "dart:(io|html)" --regexp --all
+
 ''');
+}
+
+void main(List<String> args) async {
+  var help = args.length < 2 || args.any((a) => a == '--help' || a == '-h');
+  if (help) {
+    _showHelp();
     return;
   }
 
   var from = Uri.base.resolve(args[0]);
-  var importToFind = Uri.base.resolve(args[1]);
-  packageConfig = (await findPackageConfig(Directory.current))!;
+  dynamic importToFind = args[1];
 
-  var root = from.scheme == 'package' ? packageConfig.resolve(from)! : from;
-  var queue = Queue<Uri>()..add(root);
+  var regexp = args.length > 2 && args.any((a) => a == '--regexp');
+  var findAll = args.length > 2 && args.any((a) => a == '--all');
+  var quiet = args.length > 2 && args.any((a) => a == '-q');
+  var strip = args.length > 2 && args.any((a) => a == '-s');
+  var dots = args.length > 2 && args.any((a) => a == '--dots');
 
-  // Contains the closest parent to the root of the app for a given  uri.
-  var parents = <String, String?>{root.toString(): null};
-  while (queue.isNotEmpty) {
-    var parent = queue.removeFirst();
-    var newImports = _importsFor(parent)
-        .where((uri) => !parents.containsKey(uri.toString()));
-    queue.addAll(newImports);
-    for (var import in newImports) {
-      parents[import.toString()] = parent.toString();
-      if (importToFind == import) {
-        _printImportPath(import.toString(), parents, root.toString());
-        return;
-      }
-    }
+  if (regexp) {
+    importToFind = RegExp(importToFind);
+  } else {
+    importToFind = Uri.base.resolve(importToFind);
   }
-  print('Unable to find an import path from $from to $importToFind');
-}
 
-final generatedDir = p.join('.dart_tool/build/generated');
+  var importPath = ImportPath(from, importToFind,
+      findAll: findAll, quiet: quiet, strip: strip);
 
-List<Uri> _importsFor(Uri uri) {
-  if (uri.scheme == 'dart') return [];
-
-  var file = File((uri.scheme == 'package' ? packageConfig.resolve(uri) : uri)!
-      .toFilePath());
-  // Check the generated dir for package:build
-  if (!file.existsSync()) {
-    var package = uri.scheme == 'package'
-        ? packageConfig[uri.pathSegments.first]
-        : packageConfig.packageOf(uri);
-    if (package == null) {
-      print('Warning: unable to read file at $uri, skipping it');
-      return [];
-    }
-    var path = uri.scheme == 'package'
-        ? p.joinAll(uri.pathSegments.skip(1))
-        : p.relative(uri.path, from: package.root.path);
-    file = File(p.join(generatedDir, package.name, path));
-    if (!file.existsSync()) {
-      print('Warning: unable to read file at $uri, skipping it');
-      return [];
-    }
-  }
-  var contents = file.readAsStringSync();
-
-  var parsed = parseString(content: contents, throwIfDiagnostics: false);
-  return parsed.unit.directives
-      .whereType<NamespaceDirective>()
-      .where((directive) {
-        if (directive.uri.stringValue == null) {
-          print('Empty uri content: ${directive.uri}');
-        }
-        return directive.uri.stringValue != null;
-      })
-      .map((directive) => uri.resolve(directive.uri.stringValue!))
-      .toList();
-}
-
-void _printImportPath(
-    String import, Map<String, String?> parents, String root) {
-  var path = <String>[];
-  String? next = import;
-  path.add(next);
-  while (next != root && next != null) {
-    next = parents[next];
-    if (next != null) {
-      path.add(next);
-    }
-  }
-  var spacer = '';
-  for (var import in path.reversed) {
-    print('$spacer$import');
-    spacer += '..';
-  }
+  await importPath.execute(dots: dots);
 }
