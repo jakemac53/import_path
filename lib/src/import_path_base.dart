@@ -162,9 +162,7 @@ class ImportPath {
     var root = from.scheme == 'package' ? _packageConfig.resolve(from)! : from;
 
     var foundPaths = _searchImportPaths(root, stripSearchRoot: stripSearchRoot);
-
-    var foundCount = foundPaths.length;
-    if (foundCount <= 0) {
+    if (foundPaths.isEmpty) {
       return null;
     }
 
