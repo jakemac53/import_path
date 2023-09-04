@@ -21,7 +21,7 @@
   - sdk: '>=2.14.0 <3.0.0'
   - package_config: ^2.1.0
   - path: ^1.8.3
-  - ascii_art_tree: ^1.0.2
+  - ascii_art_tree: ^1.0.4
   - lints: ^1.0.1
   - dependency_validator: ^3.2.2
   - test: ^1.21.4
