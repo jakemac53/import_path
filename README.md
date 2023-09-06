@@ -95,4 +95,4 @@ Please file feature requests and bugs at the [issue tracker][tracker].
 
 ## License
 
-Dart free & open-source [license](https://github.com/dart-lang/stagehand/blob/master/LICENSE).
+Dart free & open-source [license](https://github.com/jakemac53/import_path/blob/master/LICENSE).
