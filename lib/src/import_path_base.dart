@@ -164,7 +164,7 @@ class ImportPath {
   void printMessage(Object? m) => messagePrinter(m);
 
   /// Executes the import search and prints the results.
-  /// - [style] defines the output format.
+  /// - [style] defines the output format. Default: [ImportPathStyle.elegant]
   /// - See [printMessage] and [ASCIIArtTree].
   Future<ASCIIArtTree?> execute(
       {ImportPathStyle style = ImportPathStyle.elegant}) async {
@@ -214,7 +214,7 @@ class ImportPath {
   }
 
   /// Performs the imports search and returns the tree.
-  /// - [style] defines [ASCIIArtTree.style].
+  /// - [style] defines [ASCIIArtTree] style. Default: [ImportPathStyle.elegant]
   /// - See [ASCIIArtTree].
   Future<ASCIIArtTree?> search(
       {ImportPathStyle style = ImportPathStyle.elegant}) async {
