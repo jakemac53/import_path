@@ -10,6 +10,7 @@ dependencies:
   analyzer: '>=3.0.0 <5.0.0'
   package_config: ^2.1.0
   path: ^1.8.3
+  args: ^2.4.2
   ascii_art_tree: ^1.0.4
 
 dev_dependencies:

@@ -2,9 +2,13 @@
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+import 'package:args/args.dart';
 import 'package:import_path/import_path.dart';
 
-void _showHelp() {
+void _showHelp(ArgParser argsParser) {
+  var usage = argsParser.usage
+      .replaceAllMapped(RegExp(r'(^|\n)'), (m) => '${m.group(1)}  ');
+
   print('''
 ╔═════════════════════╗
 ║  import_path - CLI  ║
@@ -16,12 +20,7 @@ USAGE:
 
 OPTIONS:
 
-  --regexp   # Parses `%targetImport` as a `RegExp`.
-  --all      # Searches for all the import paths.
-  -s         # Strips the search root directory from displayed import paths.
-  -q         # Quiet output (only displays found paths).
-  --elegant  # Use `elegant` style for the output tree (default).
-  --dots     # Use `dots` style for the output tree.
+$usage
 
 EXAMPLES:
 
@@ -37,25 +36,59 @@ EXAMPLES:
 
   # Search for all the imports for "dart:io" and "dart:html" using `RegExp`:
   import_path web/main.dart "dart:(io|html)" --regexp --all
-
 ''');
 }
 
 void main(List<String> args) async {
-  var help = args.length < 2 || args.any((a) => a == '--help' || a == '-h');
+  var argsParser = ArgParser();
+
+  argsParser.addFlag('help',
+      abbr: 'h', negatable: false, help: "Show usage information");
+
+  argsParser.addFlag('all',
+      abbr: 'a', negatable: false, help: "Searches for all the import paths.");
+
+  argsParser.addFlag('strip',
+      abbr: 's',
+      negatable: false,
+      help: "Strips the search root directory from displayed import paths.");
+
+  argsParser.addFlag('regexp',
+      abbr: 'r',
+      negatable: false,
+      help: "Parses `%targetImport` as a `RegExp`.");
+
+  argsParser.addFlag('quiet',
+      abbr: 'q',
+      negatable: false,
+      help: "Quiet output (only displays found paths).");
+
+  argsParser.addFlag('elegant',
+      abbr: 'e',
+      negatable: false,
+      help: "Use `elegant` style for the output tree (default).");
+
+  argsParser.addFlag('dots',
+      abbr: 'd',
+      negatable: false,
+      help: "Use `dots` style for the output tree.");
+
+  var argsResult = argsParser.parse(args);
+
+  var help = argsResult.arguments.isEmpty || argsResult['help'];
   if (help) {
-    _showHelp();
+    _showHelp(argsParser);
     return;
   }
 
-  var from = Uri.base.resolve(args[0]);
-  dynamic importToFind = args[1];
+  var from = Uri.base.resolve(argsResult.rest[0]);
+  dynamic importToFind = argsResult.rest[1];
 
-  var regexp = args.length > 2 && args.any((a) => a == '--regexp');
-  var findAll = args.length > 2 && args.any((a) => a == '--all');
-  var quiet = args.length > 2 && args.any((a) => a == '-q');
-  var strip = args.length > 2 && args.any((a) => a == '-s');
-  var dots = args.length > 2 && args.any((a) => a == '--dots');
+  var regexp = argsResult['regexp'] as bool;
+  var findAll = argsResult['all'] as bool;
+  var quiet = argsResult['quiet'] as bool;
+  var strip = argsResult['strip'] as bool;
+  var dots = argsResult['dots'] as bool;
 
   if (regexp) {
     importToFind = RegExp(importToFind);
