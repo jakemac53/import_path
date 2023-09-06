@@ -10,18 +10,67 @@ import 'package:ascii_art_tree/ascii_art_tree.dart';
 import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 
+/// The import to find using [ImportPath].
+/// - See [ImportToFindURI] and [ImportToFindRegExp].
+abstract class ImportToFind {
+  factory ImportToFind.from(Object o) {
+    if (o is ImportToFind) {
+      return o;
+    } else if (o is Uri) {
+      return ImportToFindURI(o);
+    } else if (o is RegExp) {
+      return ImportToFindRegExp(o);
+    } else if (o is String) {
+      return ImportToFindURI(Uri.parse(o));
+    } else {
+      throw ArgumentError("Can't resolve: $o");
+    }
+  }
+
+  ImportToFind();
+
+  /// Returns `true` if [importUri] matches the import to find.
+  bool matches(Uri importUri);
+}
+
+/// An [Uri] implementation of [ImportToFind].
+class ImportToFindURI extends ImportToFind {
+  final Uri uri;
+
+  ImportToFindURI(this.uri);
+
+  @override
+  bool matches(Uri importUri) => uri == importUri;
+
+  @override
+  String toString() => uri.toString();
+}
+
+/// A [RegExp] implementation of [ImportToFind].
+class ImportToFindRegExp extends ImportToFind {
+  final RegExp regExp;
+
+  ImportToFindRegExp(this.regExp);
+
+  @override
+  bool matches(Uri importUri) => regExp.hasMatch(importUri.toString());
+
+  @override
+  String toString() => regExp.toString();
+}
+
 /// An Import Path search tool.
 class ImportPath {
   /// The entry point to start the search.
   final Uri from;
 
   /// The import to find. Can be an [Uri] or a [RegExp].
-  final Object importToFind;
+  final ImportToFind importToFind;
 
   /// If `true` searches for all import matches.
   final bool findAll;
 
-  /// If quiet won't call [printMessage] while searching.
+  /// If `true`, we won't call [printMessage] while searching.
   final bool quiet;
 
   /// If `true` remove from paths the [searchRoot].
@@ -39,21 +88,8 @@ class ImportPath {
       this.strip = false,
       String? searchRoot,
       this.messagePrinter = print})
-      : importToFind = _resolveImportToFind(importToFind),
+      : importToFind = ImportToFind.from(importToFind),
         _searchRoot = searchRoot;
-
-  static Object _resolveImportToFind(Object importToFind) {
-    if (importToFind is String) {
-      importToFind = Uri.parse(importToFind);
-    }
-
-    if (importToFind is! Uri && importToFind is! RegExp) {
-      throw ArgumentError(
-          "Invalid `importToFind`, not an `Uri` or `RegExp`: $importToFind");
-    }
-
-    return importToFind;
-  }
 
   /// The search root to strip from the displayed import paths.
   /// - If `searchRoot` is not provided at construction it's resolved
@@ -96,7 +132,7 @@ class ImportPath {
   void printMessage(Object? m) => messagePrinter(m);
 
   /// Executes the import search and prints the results.
-  /// - If `dots` is `true` it prints the tree in `dots` style
+  /// - If [dots] is `true` it prints the tree in `dots` style
   /// - See [printMessage] and [ASCIIArtTree].
   Future<ASCIIArtTree?> execute({bool dots = false}) async {
     if (!quiet) {
@@ -207,7 +243,7 @@ class ImportPath {
         .toList(growable: false);
 
     for (var import in newImports) {
-      if (_matchesImport(importToFind, import)) {
+      if (importToFind.matches(import)) {
         var foundPath = [...parents, import.toString()];
         found.add(foundPath);
       } else {
@@ -223,14 +259,6 @@ class ImportPath {
     assert(rm == nodePath);
 
     return found;
-  }
-
-  bool _matchesImport(Object importToFind, Uri import) {
-    if (importToFind is RegExp) {
-      return importToFind.hasMatch(import.toString());
-    } else {
-      return importToFind == import;
-    }
   }
 
   List<Uri> _importsFor(Uri uri, {required bool quiet}) {
