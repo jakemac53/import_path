@@ -76,7 +76,11 @@ class ImportPath {
   /// If `true` remove from paths the [searchRoot].
   final bool strip;
 
-  String? _searchRoot;
+  /// The search root to strip from the displayed import paths.
+  /// - If `searchRoot` is not provided at construction it's resolved
+  ///   using [from] parent directory (see [resolveSearchRoot]).
+  /// - See [strip] and [stripSearchRoot].
+  late String searchRoot;
 
   /// The function to print messages/text. Default: [print].
   /// Called by [printMessage].
@@ -88,16 +92,9 @@ class ImportPath {
       this.strip = false,
       String? searchRoot,
       this.messagePrinter = print})
-      : importToFind = ImportToFind.from(importToFind),
-        _searchRoot = searchRoot;
-
-  /// The search root to strip from the displayed import paths.
-  /// - If `searchRoot` is not provided at construction it's resolved
-  ///   using [from] parent directory (see [resolveSearchRoot]).
-  /// - See [strip] and [stripSearchRoot].
-  String get searchRoot => _searchRoot ??= resolveSearchRoot();
-
-  set searchRoot(String value) => _searchRoot = value;
+      : importToFind = ImportToFind.from(importToFind) {
+    this.searchRoot = searchRoot ?? resolveSearchRoot();
+  }
 
   /// This list contains common Dart root directories.
   /// These names are preserved by [resolveSearchRoot] to prevent
