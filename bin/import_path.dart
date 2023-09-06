@@ -81,20 +81,17 @@ void main(List<String> args) async {
     return;
   }
 
-  var from = Uri.base.resolve(argsResult.rest[0]);
-  dynamic importToFind = argsResult.rest[1];
-
   var regexp = argsResult['regexp'] as bool;
   var findAll = argsResult['all'] as bool;
   var quiet = argsResult['quiet'] as bool;
   var strip = argsResult['strip'] as bool;
   var dots = argsResult['dots'] as bool;
 
-  if (regexp) {
-    importToFind = RegExp(importToFind);
-  } else {
-    importToFind = Uri.base.resolve(importToFind);
-  }
+  var from = Uri.base.resolve(argsResult.rest[0]);
+
+  var importToFindArg = argsResult.rest[1];
+  var importToFind =
+      regexp ? RegExp(importToFindArg) : Uri.base.resolve(importToFindArg);
 
   var importPath = ImportPath(from, importToFind,
       findAll: findAll, quiet: quiet, strip: strip);

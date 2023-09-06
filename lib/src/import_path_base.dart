@@ -16,7 +16,7 @@ class ImportPath {
   final Uri from;
 
   /// The import to find. Can be an [Uri] or a [RegExp].
-  dynamic importToFind;
+  final Object importToFind;
 
   /// If `true` searches for all import matches.
   final bool findAll;
@@ -33,13 +33,16 @@ class ImportPath {
   /// Called by [printMessage].
   void Function(Object? m) messagePrinter;
 
-  ImportPath(this.from, this.importToFind,
+  ImportPath(this.from, Object importToFind,
       {this.findAll = false,
       this.quiet = false,
       this.strip = false,
       String? searchRoot,
       this.messagePrinter = print})
-      : _searchRoot = searchRoot {
+      : importToFind = _resolveImportToFind(importToFind),
+        _searchRoot = searchRoot;
+
+  static Object _resolveImportToFind(Object importToFind) {
     if (importToFind is String) {
       importToFind = Uri.parse(importToFind);
     }
@@ -48,6 +51,8 @@ class ImportPath {
       throw ArgumentError(
           "Invalid `importToFind`, not an `Uri` or `RegExp`: $importToFind");
     }
+
+    return importToFind;
   }
 
   /// The search root to strip from the displayed import paths.
