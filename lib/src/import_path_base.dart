@@ -2,6 +2,7 @@
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -57,6 +58,41 @@ class ImportToFindRegExp extends ImportToFind {
 
   @override
   String toString() => regExp.toString();
+}
+
+/// The [ImportPath] output style.
+enum ImportPathStyle {
+  dots,
+  elegant,
+  json,
+}
+
+ImportPathStyle? parseImportPathStyle(String s) {
+  s = s.toLowerCase().trim();
+
+  switch (s) {
+    case 'dots':
+      return ImportPathStyle.dots;
+    case 'elegant':
+      return ImportPathStyle.elegant;
+    case 'json':
+      return ImportPathStyle.json;
+    default:
+      return null;
+  }
+}
+
+extension ImportPathStyleExtension on ImportPathStyle {
+  ASCIIArtTreeStyle? get asASCIIArtTreeStyle {
+    switch (this) {
+      case ImportPathStyle.dots:
+        return ASCIIArtTreeStyle.dots;
+      case ImportPathStyle.elegant:
+        return ASCIIArtTreeStyle.elegant;
+      default:
+        return null;
+    }
+  }
 }
 
 /// An Import Path search tool.
@@ -130,7 +166,8 @@ class ImportPath {
   /// Executes the import search and prints the results.
   /// - If [dots] is `true` it prints the tree in `dots` style
   /// - See [printMessage] and [ASCIIArtTree].
-  Future<ASCIIArtTree?> execute({bool dots = false}) async {
+  Future<ASCIIArtTree?> execute(
+      {ImportPathStyle style = ImportPathStyle.elegant}) async {
     if (!quiet) {
       printMessage('» Search entry point: $from');
 
@@ -148,11 +185,16 @@ class ImportPath {
       }
     }
 
-    var tree = await search(dots: dots);
+    var tree = await search(style: style);
 
     if (tree != null) {
-      var treeText = tree.generate();
-      printMessage(treeText);
+      if (style == ImportPathStyle.json) {
+        var j = JsonEncoder.withIndent('  ').convert(tree.toJson());
+        printMessage(j);
+      } else {
+        var treeText = tree.generate();
+        printMessage(treeText);
+      }
     }
 
     if (!quiet) {
@@ -174,14 +216,15 @@ class ImportPath {
   /// Performs the imports search and returns the tree.
   /// - If [dots] is `true` uses the `dots` style for the tree.
   /// - See [ASCIIArtTree].
-  Future<ASCIIArtTree?> search({bool dots = false}) async {
+  Future<ASCIIArtTree?> search(
+      {ImportPathStyle style = ImportPathStyle.elegant}) async {
     var foundPaths = await searchPaths();
     if (foundPaths == null || foundPaths.isEmpty) return null;
 
     var asciiArtTree = ASCIIArtTree.fromPaths(
       foundPaths,
       stripPrefix: _stripSearchRoot,
-      style: dots ? ASCIIArtTreeStyle.dots : ASCIIArtTreeStyle.elegant,
+      style: style.asASCIIArtTreeStyle ?? ASCIIArtTreeStyle.elegant,
     );
 
     return asciiArtTree;

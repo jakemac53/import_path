@@ -1,6 +1,7 @@
 import 'dart:io';
-
+import 'dart:convert' show JsonEncoder;
 import 'package:import_path/import_path.dart';
+import 'package:import_path/src/import_path_base.dart';
 import 'package:path/path.dart' as pack_path;
 import 'package:test/test.dart';
 
@@ -84,7 +85,8 @@ Future<void> doSearchTest(
     },
   );
 
-  var tree = await importPath.execute(dots: dots);
+  var tree = await importPath.execute(
+      style: dots ? ImportPathStyle.dots : ImportPathStyle.elegant);
   expect(tree, isNotNull);
 
   var outputIdx = 0;
@@ -120,6 +122,27 @@ Future<void> doSearchTest(
   }
 
   expect(output.length, equals(outputIdx));
+
+  {
+    var output2 = [];
+
+    var importPath2 = ImportPath(
+      _resolveFileUri('bin/import_path.dart'),
+      'package:analyzer/dart/ast/ast.dart',
+      strip: strip,
+      quiet: true,
+      findAll: all,
+      messagePrinter: (m) => output2.add(m),
+    );
+
+    var tree2 = await importPath2.execute(style: ImportPathStyle.json);
+
+    expect(
+        output2,
+        equals([
+          JsonEncoder.withIndent('  ').convert(tree2?.toJson()),
+        ]));
+  }
 }
 
 Uri _resolveFileUri(String targetFilePath) {

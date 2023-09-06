@@ -63,15 +63,11 @@ void main(List<String> args) async {
       negatable: false,
       help: "Quiet output (only displays found paths).");
 
-  argsParser.addFlag('elegant',
-      abbr: 'e',
-      negatable: false,
-      help: "Use `elegant` style for the output tree (default).");
-
-  argsParser.addFlag('dots',
-      abbr: 'd',
-      negatable: false,
-      help: "Use `dots` style for the output tree.");
+  argsParser.addOption('format',
+      abbr: 'f',
+      allowed: ['elegant', 'dots', 'json'],
+      defaultsTo: 'elegant',
+      help: "The output format");
 
   var argsResult = argsParser.parse(args);
 
@@ -85,7 +81,10 @@ void main(List<String> args) async {
   var findAll = argsResult['all'] as bool;
   var quiet = argsResult['quiet'] as bool;
   var strip = argsResult['strip'] as bool;
-  var dots = argsResult['dots'] as bool;
+
+  var format = argsResult['format'] as String;
+
+  var style = parseImportPathStyle(format) ?? ImportPathStyle.elegant;
 
   var from = Uri.base.resolve(argsResult.rest[0]);
 
@@ -96,5 +95,5 @@ void main(List<String> args) async {
   var importPath = ImportPath(from, importToFind,
       findAll: findAll, quiet: quiet, strip: strip);
 
-  await importPath.execute(dots: dots);
+  await importPath.execute(style: style);
 }

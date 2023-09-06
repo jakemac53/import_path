@@ -2,4 +2,11 @@
 library import_path;
 
 export 'src/import_path_base.dart'
-    show ImportPath, ImportToFind, ImportToFindURI, ImportToFindRegExp;
+    show
+        ImportPath,
+        ImportPathStyle,
+        parseImportPathStyle,
+        ImportPathStyleExtension,
+        ImportToFind,
+        ImportToFindURI,
+        ImportToFindRegExp;
