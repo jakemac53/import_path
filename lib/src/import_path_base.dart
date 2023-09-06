@@ -79,7 +79,6 @@ class ImportPath {
   /// The search root to strip from the displayed import paths.
   /// - If `searchRoot` is not provided at construction it's resolved
   ///   using [from] parent directory (see [resolveSearchRoot]).
-  /// - See [strip] and [stripSearchRoot].
   late String searchRoot;
 
   /// The function to print messages/text. Default: [print].
@@ -121,7 +120,7 @@ class ImportPath {
   /// Return the search root to [strip] from the displayed import paths.
   /// If [strip] is `false` returns `null`.
   /// See [searchRoot].
-  String? get stripSearchRoot => strip ? searchRoot : null;
+  String? get _stripSearchRoot => strip ? searchRoot : null;
 
   /// Prints a message/text.
   /// - Called by [execute].
@@ -181,7 +180,7 @@ class ImportPath {
 
     var asciiArtTree = ASCIIArtTree.fromPaths(
       foundPaths,
-      stripPrefix: stripSearchRoot,
+      stripPrefix: _stripSearchRoot,
       style: dots ? ASCIIArtTreeStyle.dots : ASCIIArtTreeStyle.elegant,
     );
 
@@ -199,7 +198,8 @@ class ImportPath {
 
     var root = from.scheme == 'package' ? _packageConfig.resolve(from)! : from;
 
-    var foundPaths = _searchImportPaths(root, stripSearchRoot: stripSearchRoot);
+    var foundPaths =
+        _searchImportPaths(root, stripSearchRoot: _stripSearchRoot);
     if (foundPaths.isEmpty) {
       return null;
     }
