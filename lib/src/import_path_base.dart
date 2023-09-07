@@ -257,7 +257,7 @@ class ImportPath {
   }
 
   List<List<String>> _searchImportPaths(
-    Uri node, {
+    Uri currentNode, {
     String? stripSearchRoot,
     Set<Uri>? walked,
     List<String>? parents,
@@ -266,19 +266,19 @@ class ImportPath {
     found ??= [];
 
     if (walked == null) {
-      walked = {node};
-    } else if (!walked.add(node)) {
+      walked = {currentNode};
+    } else if (!walked.add(currentNode)) {
       return found;
     }
 
-    final nodePath = node.toString();
+    final nodePath = currentNode.toString();
     if (parents == null) {
       parents = [nodePath];
     } else {
       parents.add(nodePath);
     }
 
-    var newImports = _importsFor(node, quiet: quiet)
+    var newImports = _importsFor(currentNode, quiet: quiet)
         .where((uri) => !walked!.contains(uri))
         .toList(growable: false);
 
