@@ -11,7 +11,8 @@ dependencies:
   package_config: ^2.1.0
   path: ^1.8.3
   args: ^2.4.2
-  ascii_art_tree: ^1.0.4
+  ascii_art_tree: ^1.0.5
+  graph_explorer: ^1.0.0
 
 dev_dependencies:
   lints: ^1.0.1

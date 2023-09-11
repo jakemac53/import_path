@@ -1,6 +1,6 @@
 # 1.2.0
 
-- Moved code to class `ImportPath`:
+- Moved code to class `ImportPath`, `ImportPathScanner` and `ImportParser`:
   - Allows integration with other packages.
   - Facilitates tests.
 - Using `ascii_art_tree` to show the output tree, with styles `dots` (original) and `elegant`.
@@ -8,11 +8,17 @@
   - Added options:
     - `--regexp`: to use `RegExp` to match the target import.
     - `--all`: to find all the import paths. 
-    - `-q`: for a quiet output (only displays found paths).
-    - `-s`: strips the search root directory from displayed import paths.
-    - `--elegant`: use `elegant` style for the output tree.
-    - `--dots`: use `dots` style for the output tree.
+    - `--quiet`: for a quiet output (only displays found paths).
+    - `--strip`: strips the search root directory from displayed import paths.
+    - `--format`: Defines the style for the output tree (elegant, dots, json).
+    - `--fast`: to enable a fast import parser.
   - Improved help with examples.
+- `ImportParser`:
+  - Added faster parser.
+  - Added support to conditional imports.
+- `ImportPathScanner`:
+  - Added support to final all the target imports.
+  - Optimized resolution of paths graph.
 - Updated `README.md` to show CLI and Library usage.
 - Added tests and coverage (80%).
 - Added GitHub Dart CI.
@@ -22,7 +28,8 @@
   - package_config: ^2.1.0
   - path: ^1.8.3
   - args: ^2.4.2
-  - ascii_art_tree: ^1.0.4
+  - ascii_art_tree: ^1.0.5
+  - graph_explorer: ^1.0.0
   - lints: ^1.0.1
   - dependency_validator: ^3.2.2
   - test: ^1.21.4

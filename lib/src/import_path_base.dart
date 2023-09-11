@@ -1,19 +1,49 @@
 // Copyright (c) 2020, Google Inc. Please see the AUTHORS file for details.
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//
+// Based on the original work of:
+// - Jacob MacDonald: jakemac53 on GitHub
+//
+// Conversion to library:
+// - Graciliano M. Passos: gmpassos @ GitHub
+//
 
-import 'dart:convert';
+import 'dart:convert' show JsonEncoder;
 import 'dart:io';
 
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:ascii_art_tree/ascii_art_tree.dart';
-import 'package:package_config/package_config.dart';
+import 'package:graph_explorer/graph_explorer.dart';
 import 'package:path/path.dart' as p;
+
+import 'import_path_parser.dart';
+import 'import_path_scanner.dart';
+
+typedef MessagePrinter = void Function(Object? m);
+
+/// Base class [ImportPath], [ImportPathScanner] and [ImportParser].
+abstract class ImportWidget {
+  /// If `true`, we won't call [printMessage].
+  final bool quiet;
+
+  /// The function to print messages/text. Default: [print].
+  /// Called by [printMessage].
+  MessagePrinter messagePrinter;
+
+  ImportWidget({this.quiet = false, this.messagePrinter = print});
+
+  /// Prints a message/text.
+  /// - See [messagePrinter].
+  void printMessage(Object? m) => messagePrinter(m);
+}
 
 /// The import to find using [ImportPath].
 /// - See [ImportToFindURI] and [ImportToFindRegExp].
-abstract class ImportToFind {
+abstract class ImportToFind extends NodeMatcher<Uri> {
+  /// Resolves [o] (an [Uri], [String], [RegExp] or [ImportToFind])
+  /// and returns an [ImportToFind].
+  /// - If [o] is a [String] it should be a valid [Uri].
+  /// - See [ImportToFindURI] and [ImportToFindRegExp].
   factory ImportToFind.from(Object o) {
     if (o is ImportToFind) {
       return o;
@@ -29,6 +59,9 @@ abstract class ImportToFind {
   }
 
   ImportToFind();
+
+  @override
+  bool matchesValue(Uri value) => matches(value);
 
   /// Returns `true` if [importUri] matches the import to find.
   bool matches(Uri importUri);
@@ -95,39 +128,46 @@ extension ImportPathStyleExtension on ImportPathStyle {
   }
 }
 
-/// An Import Path search tool.
-class ImportPath {
+/// Import Path search tool.
+class ImportPath extends ImportWidget {
   /// The entry point to start the search.
   final Uri from;
 
   /// The import to find. Can be an [Uri] or a [RegExp].
+  /// See [ImportToFind.from].
   final ImportToFind importToFind;
 
   /// If `true` searches for all import matches.
+  /// See [ImportPathScanner.findAll].
   final bool findAll;
-
-  /// If `true`, we won't call [printMessage] while searching.
-  final bool quiet;
 
   /// If `true` remove from paths the [searchRoot].
   final bool strip;
+
+  /// If `true`, it will use a fast parser that attempts to
+  /// parse only the import section of Dart files. Default: `false`.
+  /// See [ImportPathScanner.fastParser].
+  final bool fastParser;
+
+  /// If `true`, it will also scan imports that depend on an `if` resolution. Default: `true`.
+  /// See [ImportPathScanner.includeConditionalImports].
+  final bool includeConditionalImports;
 
   /// The search root to strip from the displayed import paths.
   /// - If `searchRoot` is not provided at construction it's resolved
   ///   using [from] parent directory (see [resolveSearchRoot]).
   late String searchRoot;
 
-  /// The function to print messages/text. Default: [print].
-  /// Called by [printMessage].
-  void Function(Object? m) messagePrinter;
-
   ImportPath(this.from, Object importToFind,
       {this.findAll = false,
-      this.quiet = false,
+      bool quiet = false,
       this.strip = false,
+      this.fastParser = false,
+      this.includeConditionalImports = true,
       String? searchRoot,
-      this.messagePrinter = print})
-      : importToFind = ImportToFind.from(importToFind) {
+      MessagePrinter messagePrinter = print})
+      : importToFind = ImportToFind.from(importToFind),
+        super(quiet: quiet, messagePrinter: messagePrinter) {
     this.searchRoot = searchRoot ?? resolveSearchRoot();
   }
 
@@ -158,36 +198,21 @@ class ImportPath {
   /// See [searchRoot].
   String? get _stripSearchRoot => strip ? searchRoot : null;
 
-  /// Prints a message/text.
-  /// - Called by [execute].
-  /// - See [messagePrinter].
-  void printMessage(Object? m) => messagePrinter(m);
-
   /// Executes the import search and prints the results.
   /// - [style] defines the output format. Default: [ImportPathStyle.elegant]
-  /// - See [printMessage] and [ASCIIArtTree].
+  /// - See [search], [printMessage] and [ASCIIArtTree].
   Future<ASCIIArtTree?> execute(
-      {ImportPathStyle style = ImportPathStyle.elegant}) async {
-    if (!quiet) {
-      printMessage('» Search entry point: $from');
-
-      if (strip) {
-        printMessage(
-            '» Stripping search root from displayed imports: $searchRoot');
-      }
-
-      if (findAll) {
-        printMessage(
-            '» Searching for all import paths for `$importToFind`...\n');
-      } else {
-        printMessage(
-            '» Searching for the shortest import path for `$importToFind`...\n');
-      }
-    }
-
-    var tree = await search(style: style);
+      {ImportPathStyle style = ImportPathStyle.elegant,
+      Directory? packageDirectory}) async {
+    var tree = await search(
+        style: style.asASCIIArtTreeStyle ?? ASCIIArtTreeStyle.elegant,
+        packageDirectory: packageDirectory);
 
     if (tree != null) {
+      if (!quiet) {
+        printMessage('');
+      }
+
       if (style == ImportPathStyle.json) {
         var j = JsonEncoder.withIndent('  ').convert(tree.toJson());
         printMessage(j);
@@ -202,7 +227,7 @@ class ImportPath {
         printMessage(
             '» Unable to find an import path from $from to $importToFind');
       } else {
-        var totalFoundPaths = tree.totalLeafs;
+        var totalFoundPaths = tree.totalLeaves;
         if (totalFoundPaths > 1) {
           printMessage(
               '» Found $totalFoundPaths import paths from $from to $importToFind\n');
@@ -214,143 +239,38 @@ class ImportPath {
   }
 
   /// Performs the imports search and returns the tree.
-  /// - [style] defines [ASCIIArtTree] style. Default: [ImportPathStyle.elegant]
-  /// - See [ASCIIArtTree].
+  /// - [style] defines [ASCIIArtTree] style. Default: [ASCIIArtTreeStyle.elegant]
+  /// - See [searchPaths] and [ASCIIArtTree].
   Future<ASCIIArtTree?> search(
-      {ImportPathStyle style = ImportPathStyle.elegant}) async {
-    var foundPaths = await searchPaths();
-    if (foundPaths == null || foundPaths.isEmpty) return null;
+      {ASCIIArtTreeStyle style = ASCIIArtTreeStyle.elegant,
+      Directory? packageDirectory}) async {
+    var foundPaths = await searchPaths(packageDirectory: packageDirectory);
+    if (foundPaths.isEmpty) return null;
 
     var asciiArtTree = ASCIIArtTree.fromPaths(
       foundPaths,
       stripPrefix: _stripSearchRoot,
-      style: style.asASCIIArtTreeStyle ?? ASCIIArtTreeStyle.elegant,
+      style: style,
     );
 
     return asciiArtTree;
   }
 
-  late PackageConfig _packageConfig;
-  late String _generatedDir;
-
   /// Performs the imports search and returns the found import paths.
-  Future<List<List<String>>?> searchPaths() async {
-    var currentDir = Directory.current;
-    _packageConfig = (await findPackageConfig(currentDir))!;
-    _generatedDir = p.join('.dart_tool/build/generated');
+  /// - [packageDirectory] is used to resolve . Default: [Directory.current].
+  /// - Uses [ImportPathScanner].
+  Future<List<List<String>>> searchPaths({Directory? packageDirectory}) async {
+    var importPathScanner = ImportPathScanner(
+        findAll: findAll,
+        fastParser: fastParser,
+        messagePrinter: messagePrinter,
+        quiet: quiet,
+        includeConditionalImports: includeConditionalImports);
 
-    var root = from.scheme == 'package' ? _packageConfig.resolve(from)! : from;
+    var foundPaths = await importPathScanner.searchPaths(from, importToFind,
+        stripSearchRoot: _stripSearchRoot, packageDirectory: packageDirectory);
 
-    var foundPaths =
-        _searchImportPaths(root, stripSearchRoot: _stripSearchRoot);
-    if (foundPaths.isEmpty) {
-      return null;
-    }
-
-    if (!findAll) {
-      foundPaths.sort((a, b) => a.length.compareTo(b.length));
-      var shortest = foundPaths.first;
-      return [shortest];
-    } else {
-      return foundPaths;
-    }
-  }
-
-  List<List<String>> _searchImportPaths(
-    Uri currentNode, {
-    String? stripSearchRoot,
-    Set<Uri>? walked,
-    List<String>? parents,
-    List<List<String>>? found,
-  }) {
-    found ??= [];
-
-    if (walked == null) {
-      walked = {currentNode};
-    } else if (!walked.add(currentNode)) {
-      return found;
-    }
-
-    final nodePath = currentNode.toString();
-    if (parents == null) {
-      parents = [nodePath];
-    } else {
-      parents.add(nodePath);
-    }
-
-    var newImports = _importsFor(currentNode, quiet: quiet)
-        .where((uri) => !walked!.contains(uri))
-        .toList(growable: false);
-
-    for (var import in newImports) {
-      if (importToFind.matches(import)) {
-        var foundPath = [...parents, import.toString()];
-        found.add(foundPath);
-      } else {
-        _searchImportPaths(import,
-            stripSearchRoot: stripSearchRoot,
-            walked: walked,
-            parents: parents,
-            found: found);
-      }
-    }
-
-    var rm = parents.removeLast();
-    assert(rm == nodePath);
-
-    return found;
-  }
-
-  List<Uri> _importsFor(Uri uri, {required bool quiet}) {
-    if (uri.scheme == 'dart') return [];
-
-    var filePath = (uri.scheme == 'package' ? _packageConfig.resolve(uri) : uri)
-        ?.toFilePath();
-
-    if (filePath == null) {
-      if (!quiet) {
-        printMessage('» [WARNING] Unable to resolve Uri $uri, skipping it');
-      }
-      return [];
-    }
-
-    var file = File(filePath);
-    // Check the generated dir for package:build
-    if (!file.existsSync()) {
-      var package = uri.scheme == 'package'
-          ? _packageConfig[uri.pathSegments.first]
-          : _packageConfig.packageOf(uri);
-      if (package == null) {
-        if (!quiet) {
-          printMessage('» [WARNING] Unable to read file at $uri, skipping it');
-        }
-        return [];
-      }
-
-      var path = uri.scheme == 'package'
-          ? p.joinAll(uri.pathSegments.skip(1))
-          : p.relative(uri.path, from: package.root.path);
-      file = File(p.join(_generatedDir, package.name, path));
-      if (!file.existsSync()) {
-        if (!quiet) {
-          printMessage('» [WARNING] Unable to read file at $uri, skipping it');
-        }
-        return [];
-      }
-    }
-
-    var contents = file.readAsStringSync();
-
-    var parsed = parseString(content: contents, throwIfDiagnostics: false);
-    return parsed.unit.directives
-        .whereType<NamespaceDirective>()
-        .where((directive) {
-          if (directive.uri.stringValue == null && !quiet) {
-            printMessage('Empty uri content: ${directive.uri}');
-          }
-          return directive.uri.stringValue != null;
-        })
-        .map((directive) => uri.resolve(directive.uri.stringValue!))
-        .toList();
+    var foundPathsStr = foundPaths.toListOfStringPaths();
+    return foundPathsStr;
   }
 }

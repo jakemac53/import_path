@@ -58,6 +58,12 @@ void main(List<String> args) async {
       negatable: false,
       help: "Parses `%targetImport` as a `RegExp`.");
 
+  argsParser.addFlag('fast',
+      abbr: 'z',
+      negatable: false,
+      help:
+          "Uses a fast Dart parser (only parses the import directives at the top).");
+
   argsParser.addFlag('quiet',
       abbr: 'q',
       negatable: false,
@@ -81,6 +87,7 @@ void main(List<String> args) async {
   var findAll = argsResult['all'] as bool;
   var quiet = argsResult['quiet'] as bool;
   var strip = argsResult['strip'] as bool;
+  var fast = argsResult['fast'] as bool;
 
   var format = argsResult['format'] as String;
 
@@ -93,7 +100,7 @@ void main(List<String> args) async {
       regexp ? RegExp(importToFindArg) : Uri.base.resolve(importToFindArg);
 
   var importPath = ImportPath(from, importToFind,
-      findAll: findAll, quiet: quiet, strip: strip);
+      findAll: findAll, quiet: quiet, strip: strip, fastParser: fast);
 
   await importPath.execute(style: style);
 }
