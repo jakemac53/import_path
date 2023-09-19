@@ -76,6 +76,7 @@ class ImportPathScanner extends ImportWidget {
           .importsFor(node.value)
           .map((uri) => graph.node(uri))
           .toList(),
+      maxExpansion: 100,
     );
 
     var paths = result.paths;

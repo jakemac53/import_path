@@ -9,6 +9,7 @@
 // - Graciliano M. Passos: gmpassos @ GitHub
 //
 
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/results.dart';
@@ -66,8 +67,24 @@ class ImportParser extends ImportWidget {
   Uri resolveUri(Uri uri) =>
       uri.scheme == 'package' ? _packageConfig.resolve(uri)! : uri;
 
+  final Map<Uri, List<Uri>> _importsCache = {};
+
+  /// Disposes the internal imports cache.
+  void disposeCache() {
+    _importsCache.clear();
+  }
+
   /// Returns the imports for [uri].
-  List<Uri> importsFor(Uri uri) {
+  /// - If [cached] is `true` will use the internal cache of resolved imports.
+  List<Uri> importsFor(Uri uri, {bool cached = true}) {
+    if (cached) {
+      return UnmodifiableListView(_importsCache[uri] ??= _importsForImpl(uri));
+    } else {
+      return _importsForImpl(uri);
+    }
+  }
+
+  List<Uri> _importsForImpl(Uri uri) {
     if (uri.scheme == 'dart') return [];
 
     final isSchemePackage = uri.scheme == 'package';
