@@ -1,3 +1,19 @@
+# 1.2.0
+
+- CLI:
+  - Using `ascii_art_tree` to show the output tree, with styles `dots` (original) and `elegant`.
+  - Added options:
+    - `--regexp`: to use `RegExp` to match the target import.
+    - `--all`: to find all the import paths. 
+    - `--quiet`: for a quiet output (only displays found paths).
+    - `--strip`: strips the search root directory from displayed import paths.
+    - `--format`: Defines the style for the output tree (elegant, dots, json).
+    - `--fast`: to enable a fast import parser.
+  - Improved help with examples.
+- Added support for conditional imports.
+- Added public libraries to facilitate integration with other packages.
+- Updated `README.md` to show CLI and Library usage.
+
 # 1.1.1
 
 - Add explicit executables config to the pubspec.yaml.

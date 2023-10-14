@@ -2,105 +2,105 @@
 // All rights reserved. Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-import 'dart:collection';
-import 'dart:io';
+import 'package:args/args.dart';
+import 'package:import_path/import_path.dart';
 
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:package_config/package_config.dart';
-import 'package:path/path.dart' as p;
+void _showHelp(ArgParser argsParser) {
+  var usage = argsParser.usage
+      .replaceAllMapped(RegExp(r'(^|\n)'), (m) => '${m.group(1)}  ');
 
-// Assigned early on in `main`.
-late PackageConfig packageConfig;
+  print('''
+╔═════════════════════╗
+║  import_path - CLI  ║
+╚═════════════════════╝
 
-main(List<String> args) async {
-  if (args.length != 2) {
-    print('''
-Expected exactly two Dart files as arguments, a file to start
-searching from and an import to search for.
+USAGE:
+
+  import_path %startSearchFile %targetImport -s -q --all
+
+OPTIONS:
+
+$usage
+
+EXAMPLES:
+
+  # Search for the shortest import path of `dart:io` in a `web` directory:
+  import_path web/main.dart dart:io
+
+  # Search all the import paths of a deferred library,
+  # stripping the search root directory from the output:
+  import_path web/main.dart web/lib/deferred_lib.dart --all -s
+
+  # For a quiet output (no headers or warnings, only displays found paths):
+  import_path web/main.dart dart:io -q
+
+  # Search for all the imports for "dart:io" and "dart:html" using `RegExp`:
+  import_path web/main.dart "dart:(io|html)" --regexp --all
 ''');
+}
+
+void main(List<String> args) async {
+  var argsParser = ArgParser();
+
+  argsParser.addFlag('help',
+      abbr: 'h', negatable: false, help: "Show usage information");
+
+  argsParser.addFlag('all',
+      abbr: 'a', negatable: false, help: "Searches for all the import paths.");
+
+  argsParser.addFlag('strip',
+      abbr: 's',
+      negatable: false,
+      help: "Strips the search root directory from displayed import paths.");
+
+  argsParser.addFlag('regexp',
+      abbr: 'r',
+      negatable: false,
+      help: "Parses `%targetImport` as a `RegExp`.");
+
+  argsParser.addFlag('fast',
+      abbr: 'z',
+      negatable: false,
+      help:
+          "Uses a fast Dart parser (only parses the import directives at the top).");
+
+  argsParser.addFlag('quiet',
+      abbr: 'q',
+      negatable: false,
+      help: "Quiet output (only displays found paths).");
+
+  argsParser.addOption('format',
+      abbr: 'f',
+      allowed: ['elegant', 'dots', 'json'],
+      defaultsTo: 'elegant',
+      help: "The output format");
+
+  var argsResult = argsParser.parse(args);
+
+  var help = argsResult.arguments.isEmpty || argsResult['help'];
+  if (help) {
+    _showHelp(argsParser);
     return;
   }
 
-  var from = Uri.base.resolve(args[0]);
-  var importToFind = Uri.base.resolve(args[1]);
-  packageConfig = (await findPackageConfig(Directory.current))!;
+  var regexp = argsResult['regexp'] as bool;
+  var findAll = argsResult['all'] as bool;
+  var quiet = argsResult['quiet'] as bool;
+  var strip = argsResult['strip'] as bool;
+  var fast = argsResult['fast'] as bool;
 
-  var root = from.scheme == 'package' ? packageConfig.resolve(from)! : from;
-  var queue = Queue<Uri>()..add(root);
+  var format = argsResult['format'] as String;
 
-  // Contains the closest parent to the root of the app for a given  uri.
-  var parents = <String, String?>{root.toString(): null};
-  while (queue.isNotEmpty) {
-    var parent = queue.removeFirst();
-    var newImports = _importsFor(parent)
-        .where((uri) => !parents.containsKey(uri.toString()));
-    queue.addAll(newImports);
-    for (var import in newImports) {
-      parents[import.toString()] = parent.toString();
-      if (importToFind == import) {
-        _printImportPath(import.toString(), parents, root.toString());
-        return;
-      }
-    }
-  }
-  print('Unable to find an import path from $from to $importToFind');
-}
+  var style = parseImportPathStyle(format) ?? ImportPathStyle.elegant;
 
-final generatedDir = p.join('.dart_tool/build/generated');
+  var from = Uri.base.resolve(argsResult.rest[0]);
 
-List<Uri> _importsFor(Uri uri) {
-  if (uri.scheme == 'dart') return [];
+  var importToFindArg = argsResult.rest[1];
+  var importToFind =
+      regexp ? RegExp(importToFindArg) : Uri.base.resolve(importToFindArg);
 
-  var file = File((uri.scheme == 'package' ? packageConfig.resolve(uri) : uri)!
-      .toFilePath());
-  // Check the generated dir for package:build
-  if (!file.existsSync()) {
-    var package = uri.scheme == 'package'
-        ? packageConfig[uri.pathSegments.first]
-        : packageConfig.packageOf(uri);
-    if (package == null) {
-      print('Warning: unable to read file at $uri, skipping it');
-      return [];
-    }
-    var path = uri.scheme == 'package'
-        ? p.joinAll(uri.pathSegments.skip(1))
-        : p.relative(uri.path, from: package.root.path);
-    file = File(p.join(generatedDir, package.name, path));
-    if (!file.existsSync()) {
-      print('Warning: unable to read file at $uri, skipping it');
-      return [];
-    }
-  }
-  var contents = file.readAsStringSync();
+  var importPath = ImportPath(from, importToFind,
+      findAll: findAll, quiet: quiet, strip: strip, fastParser: fast);
 
-  var parsed = parseString(content: contents, throwIfDiagnostics: false);
-  return parsed.unit.directives
-      .whereType<NamespaceDirective>()
-      .where((directive) {
-        if (directive.uri.stringValue == null) {
-          print('Empty uri content: ${directive.uri}');
-        }
-        return directive.uri.stringValue != null;
-      })
-      .map((directive) => uri.resolve(directive.uri.stringValue!))
-      .toList();
-}
-
-void _printImportPath(
-    String import, Map<String, String?> parents, String root) {
-  var path = <String>[];
-  String? next = import;
-  path.add(next);
-  while (next != root && next != null) {
-    next = parents[next];
-    if (next != null) {
-      path.add(next);
-    }
-  }
-  var spacer = '';
-  for (var import in path.reversed) {
-    print('$spacer$import');
-    spacer += '..';
-  }
+  await importPath.execute(style: style);
 }
